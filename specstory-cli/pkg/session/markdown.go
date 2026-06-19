@@ -56,10 +56,23 @@ func GenerateMarkdownFromAgentSession(sessionData *SessionData, includeMessageID
 		sessionData.SessionID,
 		commentTimestamp)
 
+	// Agent-generated session title, alongside the session id. Blank if unavailable.
+	if strings.TrimSpace(sessionData.Title) != "" {
+		fmt.Fprintf(&markdown, "**Title:** %s\n\n", sessionData.Title)
+	}
+
 	// Render each exchange, tracking role across exchanges for proper separators
 	prevRole := ""
 	for _, exchange := range sessionData.Exchanges {
 		for _, msg := range exchange.Messages {
+			// A single agent turn is split across several JSONL records (thinking,
+			// text, tool_use). Records with no text, no rendered thinking, and no
+			// tool — e.g. signature-only thinking blocks — would otherwise emit a
+			// bare role header with an empty body. Skip them, and only advance
+			// prevRole for messages we actually render so separators stay correct.
+			if !hasRenderableContent(msg) {
+				continue
+			}
 			markdown.WriteString(renderMessage(msg, prevRole, includeMessageIDs, useUTC))
 			prevRole = msg.Role
 		}
@@ -95,6 +108,21 @@ func formatTimestamp(timestamp string, useUTC bool) string {
 
 	// Use local timezone with offset: "2025-11-13 21:12:14-0700"
 	return t.Local().Format("2006-01-02 15:04:05-0700")
+}
+
+// hasRenderableContent reports whether a message would produce visible output —
+// a non-empty text/thinking part or a tool use. Messages with none are skipped so
+// they don't emit an empty role header.
+func hasRenderableContent(msg Message) bool {
+	if msg.Tool != nil {
+		return true
+	}
+	for _, part := range msg.Content {
+		if strings.TrimSpace(part.Text) != "" {
+			return true
+		}
+	}
+	return false
 }
 
 // renderMessage renders a single message with role header, content, and optional tool use
@@ -133,6 +161,14 @@ func renderMessage(msg Message, prevRole string, includeMessageIDs bool, useUTC 
 
 // renderRoleHeader creates the role header for a message
 func renderRoleHeader(msg Message, useUTC bool) string {
+	// Idle "/recap" (away_summary): label distinctly from a normal agent turn.
+	if recap, ok := msg.Metadata["recap"].(bool); ok && recap {
+		if msg.Timestamp != "" {
+			return fmt.Sprintf("_**Recap (%s)**_\n\n", formatTimestamp(msg.Timestamp, useUTC))
+		}
+		return "_**Recap**_\n\n"
+	}
+
 	// Check if this is a sidechain message (subagent conversation)
 	sidechainMarker := ""
 	if isSidechain, ok := msg.Metadata["isSidechain"].(bool); ok && isSidechain {
