@@ -180,6 +180,15 @@ func SetUserTurnColor(color string) { userTurnColor = color }
 // ones) and populate the document outline for quick navigation. Agent turns stay
 // quiet (italic-bold) so the user turns remain the visual anchors. Color is
 // opt-in (off by default) via SetUserTurnColor.
+//
+// ⚠️ PARSING CONTRACT — read before changing these strings. The header text
+// produced here is what downstream consumers grep on to split a transcript into
+// turns (turn counts, round segmentation, indexers/search tools like the
+// companion chat_index, SpecStory Cloud). They typically match "👤 User" /
+// "🤖 Agent" (and "📋 Recap" / "queued, not sent"). If you rename a marker or
+// change the shape, you will SILENTLY break those consumers — update them in
+// lockstep and bump the "Markdown vX.Y.Z" version in GeneratedBySpecStory so the
+// change is detectable.
 func renderRoleHeader(msg Message, useUTC bool) string {
 	// Idle "/recap" (away_summary): label distinctly from a normal agent turn.
 	if recap, ok := msg.Metadata["recap"].(bool); ok && recap {
