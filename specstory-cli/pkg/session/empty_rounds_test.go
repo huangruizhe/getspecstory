@@ -27,7 +27,7 @@ func TestGenerateMarkdown_SkipsEmptyAgentRounds(t *testing.T) {
 		t.Fatalf("generate: %v", err)
 	}
 
-	if got := strings.Count(md, "_**Agent"); got != 1 {
+	if got := strings.Count(md, "_**🤖 Agent"); got != 1 {
 		t.Errorf("expected 1 agent header (empty one skipped), got %d\n---\n%s", got, md)
 	}
 	if !strings.Contains(md, "hello!") {

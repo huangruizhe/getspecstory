@@ -11,7 +11,7 @@ func TestRenderRoleHeader_Recap(t *testing.T) {
 		Timestamp: "2026-06-16T04:12:16Z",
 		Metadata:  map[string]interface{}{"recap": true},
 	}
-	if got := renderRoleHeader(recap, true); got != "_**Recap (2026-06-16 04:12:16Z)**_\n\n" {
+	if got := renderRoleHeader(recap, true); got != "_**📋 Recap (2026-06-16 04:12:16Z)**_\n\n" {
 		t.Errorf("recap header = %q", got)
 	}
 
